@@ -1,16 +1,13 @@
 from flask import Blueprint, jsonify
+from services.user_services import get_all_users
 
 user_bp = Blueprint("users", __name__)
 
 
-@user_bp.route("/", methods=["GET"])
-def get_users():
-    return jsonify([
-        {
-            "id": 1,
-            "name": "Rajib"
-        }
-    ])
+@user_bp.route("/")
+def users():
+    users = get_all_users()
+    return jsonify(users)
 
 
 @user_bp.route("/<int:user_id>", methods=["GET"])

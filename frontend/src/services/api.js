@@ -1,39 +1,44 @@
 import axios from 'axios';
 
-// Base URL resolution:
-// 1. VITE_API_BASE_URL from .env (points straight at your backend, e.g. https://api.myschool.com/api)
-// 2. Falls back to "/api" which the Vite dev server proxies to VITE_DEV_PROXY_TARGET (see vite.config.js),
-//    and which your production host should reverse-proxy to the backend as well.
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_URL = "http://localhost:5000/api";
 
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+// 1. Create a true Axios instance
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
 });
 
-// Attach JWT (if present) to every request.
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('planify_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// 2. Attach Request Interceptor
+axiosInstance.interceptors.request.use(
+  (config) => config,
+  (error) => Promise.reject(error)
+);
 
-// Central 401 handling: clear session and let the app redirect to /login.
-api.interceptors.response.use(
-  (response) => response,
+// 3. Attach Response Interceptor (Handle Errors & 401 Unauthorized)
+axiosInstance.interceptors.response.use(
+  (response) => response.data,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('planify_token');
       localStorage.removeItem('planify_user');
       window.dispatchEvent(new CustomEvent('planify:unauthorized'));
     }
-    return Promise.reject(error);
+
+    const message = error.response?.data?.message || error.message || 'Something went wrong';
+    return Promise.reject(new Error(message));
   }
 );
+
+// 4. Export API Service Methods using the Axios instance
+export const api = {
+  register: (userData) => axiosInstance.post('/auth/register', userData),
+  login: (credentials) => axiosInstance.post('/auth/login', credentials),
+  logout: () => axiosInstance.post('/auth/logout'),
+  me: () => axiosInstance.get('/auth/me'),
+};
 
 export default api;

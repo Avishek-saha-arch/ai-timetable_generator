@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as authService from '../services/auth.service';
+import { api } from '../services/api';
 import * as notificationsService from '../services/notifications.service';
 import { TOKEN_KEY, USER_KEY } from '../utils/constants';
 
@@ -12,51 +12,91 @@ const cachedUser = (() => {
   }
 })();
 
-const useAppStore = create((set, get) => ({
-  theme: 'light',
-  toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+const initialUser = cachedUser;
 
-  sidebarOpen: true,
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-
-  isAuthenticated: !!localStorage.getItem(TOKEN_KEY),
-  userRole: cachedUser?.role || null,
-  currentUser: cachedUser || { name: '', role: '', email: '', avatar: '' },
-  authError: null,
+const useAppStore = create((set) => ({
+  user: initialUser,
+  currentUser: initialUser,
+  isAuthenticated: Boolean(initialUser),
+  userRole: initialUser?.role || null,
   authLoading: false,
+  authError: null,
+
+  register: async ({ name, email, password, role }) => {
+    set({
+      authLoading: true,
+      authError: null,
+    });
+
+    try {
+      const data = await api.register({
+        name,
+        email,
+        password,
+        role,
+      });
+
+      set({
+        user: data.user,
+        currentUser: data.user,
+        isAuthenticated: true,
+        userRole: data.user?.role || null,
+        authLoading: false,
+      });
+
+      return data.user;
+    } catch (error) {
+      set({
+        authLoading: false,
+        authError: error.message,
+      });
+
+      throw error;
+    }
+  },
 
   login: async ({ email, password, role }) => {
-    set({ authLoading: true, authError: null });
+    set({
+      authLoading: true,
+      authError: null,
+    });
+
     try {
-      const { user } = await authService.login({ email, password, role });
-      set({ isAuthenticated: true, userRole: user.role, currentUser: user, authLoading: false });
-      get().loadNotifications();
-      return user;
+      const data = await api.login({
+        email,
+        password,
+        role,
+      });
+
+      set({
+        user: data.user,
+        currentUser: data.user,
+        isAuthenticated: true,
+        userRole: data.user?.role || null,
+        authLoading: false,
+      });
+
+      return data.user;
     } catch (error) {
-      set({ authLoading: false, authError: error?.response?.data?.message || 'Invalid credentials.' });
+      set({
+        authLoading: false,
+        authError: error.message,
+      });
+
       throw error;
     }
   },
 
   logout: async () => {
-    await authService.logout();
-    set({ isAuthenticated: false, userRole: null, currentUser: { name: '', role: '', email: '', avatar: '' } });
-  },
+    await api.logout();
 
-  notifications: [],
-  loadNotifications: async () => {
-    const notifications = await notificationsService.getNotifications();
-    set({ notifications });
-  },
-  removeNotification: (id) => {
-    notificationsService.dismissNotification(id).catch(() => {});
-    set((state) => ({ notifications: state.notifications.filter((n) => n.id !== id) }));
+    set({
+      user: null,
+      currentUser: null,
+      isAuthenticated: false,
+      userRole: null,
+    });
   },
 }));
-
-// If a request comes back 401, drop the local session immediately.
-window.addEventListener('planify:unauthorized', () => {
-  useAppStore.setState({ isAuthenticated: false, userRole: null, currentUser: { name: '', role: '', email: '', avatar: '' } });
-});
 
 export default useAppStore;
