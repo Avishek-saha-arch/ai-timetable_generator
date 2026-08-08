@@ -32,10 +32,10 @@ def register():
             }), 400
         
     result = register_user(
-        data["name"],
-        data["email"],
-        data["password"],
-        data["role"]
+        name=data["name"],
+        email=data["email"],
+        password=data["password"],
+        role=data["role"]
     )
 
     status = 201 if result.get("success") else 400
