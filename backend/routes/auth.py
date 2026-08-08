@@ -31,12 +31,17 @@ def register():
                 "message": f"'{field}' is required"
             }), 400
         
-    result = register_user(
+    response = register_user(
         name=data["name"],
         email=data["email"],
         password=data["password"],
         role=data["role"]
     )
 
-    status = 201 if result.get("success") else 400
-    return jsonify(result), status
+    if isinstance(response, tuple):
+        result, status = response
+    else:
+        result = response
+        status = 201 if result.get("success") else 400
+
+    return jsonify(result), status  

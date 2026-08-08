@@ -4,7 +4,27 @@ import os
 
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
+
+def _normalize_supabase_url(url: str | None) -> str | None:
+    if not url:
+        return None
+
+    normalized = url.strip()
+    if not normalized:
+        return None
+
+    if normalized.endswith("/"):
+        normalized = normalized[:-1]
+
+    for suffix in ("/rest/v1", "/rest/v1/"):
+        if normalized.endswith(suffix):
+            normalized = normalized[:-len(suffix)]
+            break
+
+    return normalized
+
+
+SUPABASE_URL = _normalize_supabase_url(os.getenv("SUPABASE_URL"))
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
