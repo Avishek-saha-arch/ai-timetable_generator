@@ -4,7 +4,7 @@ from flask_cors import CORS
 from routes.auth import auth_bp
 from routes.users import user_bp
 # from routes.attendance import attendance_bp
-# from routes.timetable import timetable_bp
+from routes.timetable import timetable_bp
 
 app = Flask(__name__)
 
@@ -16,7 +16,7 @@ CORS(app,origins=["http://localhost:5173"], supports_credentials=True)
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(user_bp, url_prefix="/api/users")
 # # app.register_blueprint(attendance_bp, url_prefix="/api/attendance")
-# # app.register_blueprint(timetable_bp, url_prefix="/api/timetable")
+app.register_blueprint(timetable_bp, url_prefix="/api/timetable")
 
 
 @app.route("/")

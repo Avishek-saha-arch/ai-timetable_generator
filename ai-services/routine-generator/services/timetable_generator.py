@@ -1,39 +1,42 @@
 
 #! RUN THIS FILE TO GENERATE THE ACTUAL TIMETABLE EXCEL FILE    
-
 from __future__ import annotations
 from pathlib import Path
+import json
 import pandas as pd
 from ortools.sat.python import cp_model
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 
-# -------------------------------
-# DATA (change with user data)
-# -------------------------------
-
-classes = ["6A", "6B"]
-days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-periods = [1, 2, 3, 4, 5, 6]
-#! Change the subjects and their respective teachers and hours as per your requirements
-#! Total should be 30 hours per week (6 periods * 5 days)
-subjects = {
-    "Math": {"teacher": "Mr. Sharma", "hours": 6},
-    "English": {"teacher": "Ms. Sen", "hours": 6},
-    "Science": {"teacher": "Mr. Das", "hours": 5},
-    "History": {"teacher": "Mr. Roy", "hours": 4},
-    "Computer": {"teacher": "Mrs. Gupta", "hours": 4},
-    "Free": {"teacher": "FREE", "hours": 5},
+# ---------------------------------------------------------
+# SAMPLE JSON DATA STRUCTURE
+# ---------------------------------------------------------
+SAMPLE_JSON_INPUT = """
+{
+  "school_name": "ABC SCHOOL",
+  "class_name": "Grade 10",
+  "section": "A",
+  "num_periods": 6,
+  "period_duration_mins": 45,
+  "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+  "subjects": [
+    {"name": "Mathematics", "teachers": ["Mr. Sharma", "Prof. Alan"], "hours": 8},
+    {"name": "Physics", "teachers": ["Dr. Robert"], "hours": 7},
+    {"name": "Computer Science", "teachers": ["Prof. Sarah", "Prof. John"], "hours": 10},
+    {"name": "Free Period / Self Study", "teachers": ["N/A"], "hours": 5}
+  ]
 }
+"""
 
-#-------------------------------
-#EXCEL FILE GENERATION
-#-------------------------------
-def save_timetable_excel(rows,
-                         filename="generated_timetable.xlsx",
-                         school_name="ABC SCHOOL"):
-
+# ---------------------------------------------------------
+# EXCEL GENERATOR
+# ---------------------------------------------------------
+def save_timetable_excel(
+    rows: list,
+    config: dict,
+    filename: str = "generated_timetable.xlsx"
+):
     wb = Workbook()
     wb.remove(wb.active)
 
@@ -42,7 +45,7 @@ def save_timetable_excel(rows,
     cell_fill = PatternFill("solid", fgColor="DCE6F1")
 
     white_font = Font(color="FFFFFF", bold=True)
-    title_font = Font(color="FFFFFF", bold=True, size=16)
+    title_font = Font(color="FFFFFF", bold=True, size=14)
 
     border = Border(
         left=Side(style="thin"),
@@ -51,172 +54,143 @@ def save_timetable_excel(rows,
         bottom=Side(style="thin"),
     )
 
-    center = Alignment(
-        horizontal="center",
-        vertical="center",
-        wrap_text=True
-    )
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    all_classes = sorted({r[0] for r in rows})
+    days = config["days"]
+    periods = list(range(1, config["num_periods"] + 1))
+    class_label = f"{config['class_name']} - Section {config['section']}"
 
-    for cls in all_classes:
+    ws = wb.create_sheet(title=f"Class {config['section']}")
 
-        ws = wb.create_sheet(title=str(cls))
+    # Title Header
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(days) + 1)
+    title = ws["A1"]
+    title.value = f"{config.get('school_name', 'SCHOOL')} | Timetable: {class_label} ({config['period_duration_mins']} mins/period)"
+    title.fill = title_fill
+    title.font = title_font
+    title.alignment = center
 
-        # Title
-        ws.merge_cells(start_row=1,
-                       start_column=1,
-                       end_row=1,
-                       end_column=len(days) + 1)
+    # Table Header Row
+    ws["A2"] = "Period"
+    ws["A2"].fill = header_fill
+    ws["A2"].font = white_font
+    ws["A2"].alignment = center
 
-        title = ws["A1"]
-        title.value = f"{school_name} - Class {cls} Timetable"
-        title.fill = title_fill
-        title.font = title_font
-        title.alignment = center
+    for col, day in enumerate(days, start=2):
+        cell = ws.cell(row=2, column=col)
+        cell.value = day
+        cell.fill = header_fill
+        cell.font = white_font
+        cell.alignment = center
+        cell.border = border
 
-        # Headers
-        ws["A2"] = "Period"
+    # Period Column Labels
+    for row_no, period in enumerate(periods, start=3):
+        cell = ws.cell(row=row_no, column=1)
+        cell.value = f"Period {period}"
+        cell.fill = header_fill
+        cell.font = white_font
+        cell.alignment = center
+        cell.border = border
 
-        ws["A2"].fill = header_fill
-        ws["A2"].font = white_font
-        ws["A2"].alignment = center
+    # Populate Timetable Cells
+    for day, period, subject, teacher in rows:
+        row = period + 2
+        col = days.index(day) + 2
 
-        for col, day in enumerate(days, start=2):
+        cell = ws.cell(row=row, column=col)
+        cell.value = f"{subject}\n({teacher})"
+        cell.alignment = center
+        cell.fill = cell_fill
+        cell.border = border
 
-            cell = ws.cell(row=2, column=col)
-            cell.value = day
-            cell.fill = header_fill
-            cell.font = white_font
-            cell.alignment = center
-            cell.border = border
+    ws.freeze_panes = "B3"
 
-        # Period labels
-        for row_no, period in enumerate(periods, start=3):
+    # Layout Formatting
+    ws.column_dimensions["A"].width = 16
+    for c in range(2, len(days) + 2):
+        ws.column_dimensions[get_column_letter(c)].width = 24
 
-            cell = ws.cell(row=row_no, column=1)
-            cell.value = f"Period {period}"
-            cell.fill = header_fill
-            cell.font = white_font
-            cell.alignment = center
-            cell.border = border
-
-        # Fill timetable
-        for cls_name, day, period, subject, teacher in rows:
-
-            if cls_name != cls:
-                continue
-
-            row = periods.index(period) + 3
-            col = days.index(day) + 2
-
-            cell = ws.cell(row=row, column=col)
-            cell.value = f"{subject}\n({teacher})"
-            cell.alignment = center
-            cell.fill = cell_fill
-            cell.border = border
-
-        ws.freeze_panes = "B3"
-
-        # Column widths
-        ws.column_dimensions["A"].width = 14
-
-        for c in range(2, len(days) + 2):
-            ws.column_dimensions[get_column_letter(c)].width = 24
-
-        # Row heights
-        for r in range(3, len(periods) + 3):
-            ws.row_dimensions[r].height = 45
+    for r in range(3, len(periods) + 3):
+        ws.row_dimensions[r].height = 45
 
     wb.save(filename)
+    print(f"Excel timetable saved to {filename}")
 
-    print(f"Excel timetable saved as {filename}")
 
+# ---------------------------------------------------------
+# OPTIMIZED OR-TOOLS SAT SOLVER
+# ---------------------------------------------------------
+def generate_timetable_from_json(json_input: str | dict, output_path: str = "generated_timetable.xlsx") -> pd.DataFrame:
+    config = json.loads(json_input) if isinstance(json_input, str) else json_input
 
-#-------------------------------
-# TIMETABLE GENERATION
-#-------------------------------
+    days = config["days"]
+    num_periods = config["num_periods"]
+    periods = list(range(1, num_periods + 1))
+    total_slots = len(days) * num_periods
 
-def generate_timetable(output_path: str | None = None) -> pd.DataFrame:
-    """Create a simple feasible timetable and save it to a CSV file."""
+    subjects_data = config["subjects"]
+    total_requested_hours = sum(s["hours"] for s in subjects_data)
+
+    # Capacity Check
+    if total_requested_hours != total_slots:
+        raise ValueError(
+            f"Total requested hours ({total_requested_hours}) does not match available weekly slots ({total_slots})."
+        )
+
     model = cp_model.CpModel()
 
-    # x[(class, day, period, subject)] = 1 if the subject is scheduled at that slot
+    # Decision variables: x[(day, period, subject_idx)]
     x = {}
-    for cls in classes:
-        for day in days:
-            for period in periods:
-                for subject in subjects:
-                    x[(cls, day, period, subject)] = model.NewBoolVar(
-                        f"{cls}_{day}_{period}_{subject}"
-                    )
+    for day in days:
+        for period in periods:
+            for s_idx, _ in enumerate(subjects_data):
+                x[(day, period, s_idx)] = model.NewBoolVar(f"slot_{day}_{period}_s{s_idx}")
 
-    # One subject per class, per day, per period
-    for cls in classes:
-        for day in days:
-            for period in periods:
-                model.Add(
-                    sum(x[(cls, day, period, subject)] for subject in subjects) == 1
-                )
+    # Constraint 1: Exactly 1 subject per time slot
+    for day in days:
+        for period in periods:
+            model.Add(sum(x[(day, period, s_idx)] for s_idx, _ in enumerate(subjects_data)) == 1)
 
-    # Each subject must appear for the required number of hours for each class
-    for cls in classes:
-        for subject, info in subjects.items():
-            model.Add(
-                sum(
-                    x[(cls, day, period, subject)]
-                    for day in days
-                    for period in periods
-                )
-                == info["hours"]
-            )
+    # Constraint 2: Subject total weekly hours requirement
+    for s_idx, s_info in enumerate(subjects_data):
+        model.Add(
+            sum(x[(day, period, s_idx)] for day in days for period in periods) == s_info["hours"]
+        )
 
-    # Avoid assigning the same subject in consecutive periods on the same day
-    for cls in classes:
-        for day in days:
-            for period in periods[:-1]:
-                for subject in subjects:
-                    model.Add(
-                        x[(cls, day, period, subject)]
-                        + x[(cls, day, period + 1, subject)]
-                        <= 1
-                    )
+    # Constraint 3: Prevent same subject back-to-back in consecutive periods on same day
+    for day in days:
+        for period in periods[:-1]:
+            for s_idx, _ in enumerate(subjects_data):
+                model.Add(x[(day, period, s_idx)] + x[(day, period + 1, s_idx)] <= 1)
 
+    # Solve
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 10
     solver.parameters.num_search_workers = 8
     status = solver.Solve(model)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        raise RuntimeError(f"Unable to build a timetable. Solver status: {status}")
+        raise RuntimeError(f"Unable to find a valid timetable solution. Solver status: {status}")
 
-    rows = []
-    for cls in classes:
-        for day in days:
-            for period in periods:
-                for subject in subjects:
-                    if solver.Value(x[(cls, day, period, subject)]):
-                        teacher = subjects[subject]["teacher"]
-                        rows.append([cls, day, period, subject, teacher])
+    # Process Results
+    results = []
+    for day in days:
+        for period in periods:
+            for s_idx, s_info in enumerate(subjects_data):
+                if solver.Value(x[(day, period, s_idx)]):
+                    # Round-robin or primary teacher assignment
+                    assigned_teacher = s_info["teachers"][0] if s_info["teachers"] else "N/A"
+                    results.append([day, period, s_info["name"], assigned_teacher])
 
-    df = pd.DataFrame(
-        rows,
-        columns=["Class", "Day", "Period", "Subject", "Teacher"],
-    )
+    df = pd.DataFrame(results, columns=["Day", "Period", "Subject", "Teacher"])
 
-    rows = df.values.tolist()
-    output_file = Path(output_path or "generated_timetable.xlsx")
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    save_timetable_excel(
-        rows,
-        filename=str(output_file),
-        school_name="ABC SCHOOL"
-    )
+    # Export to Excel
+    save_timetable_excel(results, config, filename=output_path)
     return df
 
 
 if __name__ == "__main__":
-    timetable = generate_timetable()
-    print("\nTimetable Generated Successfully\n")
-    print(timetable.to_string(index=False))
-    print("\nExcel timetable saved successfully!")
+    timetable_df = generate_timetable_from_json(SAMPLE_JSON_INPUT, "school_timetable.xlsx")
+    print("\n--- Timetable Generated Successfully ---")
+    print(timetable_df.to_string(index=False))
