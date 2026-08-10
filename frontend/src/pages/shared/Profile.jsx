@@ -15,11 +15,12 @@ const Profile = () => {
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
           <div className="relative">
             <div className="w-28 h-28 rounded-3xl bg-gradient-to-tr from-[#284A50] to-[#52A8AD] text-white flex items-center justify-center font-bold text-4xl shadow-lg shadow-[#284A50]/20">
-              {currentUser.avatar}
+              {/* {currentUser.avatar} */}
+              {currentUser?.name?.charAt(0)?.toUpperCase() || currentUser?.email?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <button className="absolute -bottom-2 -right-2 p-2 bg-white rounded-full shadow-md border border-slate-200 text-slate-500">
+            {/* <button className="absolute -bottom-2 -right-2 p-2 bg-white rounded-full shadow-md border border-slate-200 text-slate-500">
               <Camera size={16} />
-            </button>
+            </button> */}
           </div>
           <div className="flex-1 w-full">
             <h2 className="text-2xl font-bold text-slate-900">{currentUser.name}</h2>
@@ -60,20 +61,20 @@ const Profile = () => {
               <p className="font-bold text-emerald-600">Verified</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          {/* <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#284A50]/10 flex items-center justify-center text-[#284A50]"><Activity size={20} /></div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Member Since</p>
               <p className="font-bold text-[#284A50]">2024</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
+          </div> */}
+          {/* <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500"><CalendarDays size={20} /></div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Last Login</p>
               <p className="font-bold text-amber-600">Today</p>
-            </div>
-          </div>
+            </div> 
+          </div>*/}
         </div>
       </Card>
     </div>

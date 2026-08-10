@@ -40,6 +40,9 @@ const LoginPage = () => {
     try {
       let user;
       if (isSignUp) {
+        if (role === 'admin') {
+          throw new Error('Admin registration is not allowed through this form.');
+        }
         user = await register({ name, email, password, role });
       } else {
         user = await login({ email, password, role });

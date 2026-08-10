@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
+from database.supabase import supabase
 from services.user_services import get_all_users
 
 user_bp = Blueprint("users", __name__)
