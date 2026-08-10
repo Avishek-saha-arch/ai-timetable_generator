@@ -1,68 +1,143 @@
-import api from './api';
 
-/*
- * Expected backend contract:
- *   POST /documents/extract   (multipart/form-data, field name "file")
- *        -> { studentId, studentName, class, dob, guardian, phone, bloodGroup, confidence }
- *   POST /documents/:extractionId/save  { ...editedFields } -> { id, saved: true }
- *
- * onProgress(percent) is called with upload progress while the file is sent;
- * the backend is responsible for returning the OCR result once processing finishes.
- */
+import axios from 'axios';
+
+const DOCUMENT_READER_URL =
+  import.meta.env.VITE_DOCUMENT_READER_URL ||
+  'http://127.0.0.1:8001';
+
+const documentApi = axios.create({
+  baseURL: DOCUMENT_READER_URL,
+});
 
 export async function extractDocument(file, onProgress) {
   const form = new FormData();
   form.append('file', file);
 
-  try {
-    const { data } = await api.post('/documents/extract', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (evt) => {
-        if (onProgress && evt.total) {
-          onProgress(Math.round((evt.loaded / evt.total) * 100));
+  // 1. Upload document
+  const uploadResponse = await documentApi.post(
+    '/upload',
+    form,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+
+      onUploadProgress: (event) => {
+        if (event.total && onProgress) {
+          onProgress(
+            Math.round(
+              (event.loaded / event.total) * 30
+            )
+          );
         }
       },
-    });
-    return data;
-  } catch (error) {
-    if (!error.response) {
-      // No backend/OCR engine connected yet - simulate the extraction so the
-      // reviewer UI can still be demoed end-to-end.
-      return simulateExtraction(onProgress);
     }
-    throw error;
+  );
+
+  const uploadData = uploadResponse.data;
+
+  const documentId = uploadData.document_id;
+
+  if (!documentId) {
+    throw new Error(
+      'Document Reader did not return a document ID.'
+    );
   }
+
+  // 2. Poll the document until AI extraction is available
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const response = await documentApi.get(
+      `/documents/${documentId}`
+    );
+
+    const document = response.data;
+
+    // extracted_data already exists in your current backend
+    if (document.extracted_data) {
+      if (onProgress) {
+        onProgress(100);
+      }
+
+      return normaliseDocument(document);
+    }
+
+    if (
+      document.status === 'failed' ||
+      document.status === 'error'
+    ) {
+      throw new Error(
+        'Document processing failed.'
+      );
+    }
+
+    if (onProgress) {
+      onProgress(
+        Math.min(30 + attempt * 0.6, 95)
+      );
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 2000)
+    );
+  }
+
+  throw new Error(
+    'Timed out waiting for AI document extraction.'
+  );
 }
 
-function simulateExtraction(onProgress) {
-  return new Promise((resolve) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      onProgress && onProgress(Math.min(progress, 100));
-      if (progress >= 100) {
-        clearInterval(interval);
-        resolve({
-          studentId: 'STU-2024-899',
-          studentName: 'Michael Chang',
-          class: '10th - Section B',
-          dob: '15/08/2008',
-          guardian: 'Sarah Chang',
-          phone: '+1 (555) 019-2838',
-          bloodGroup: 'O+',
-          confidence: 98,
-        });
-      }
-    }, 80);
-  });
+function normaliseDocument(document) {
+  let extracted = document.extracted_data;
+
+  // Your backend currently returns extracted_data
+  // as a JSON string.
+  if (typeof extracted === 'string') {
+    try {
+      extracted = JSON.parse(extracted);
+    } catch {
+      extracted = {
+        fields: {},
+        summary: extracted,
+      };
+    }
+  }
+
+  const fields =
+    extracted?.fields &&
+    typeof extracted.fields === 'object'
+      ? extracted.fields
+      : {};
+
+  return {
+    documentId: document.id,
+    filename: document.original_filename,
+    documentType:
+      extracted?.document_type ||
+      document.document_type ||
+      'Unknown',
+
+    confidence:
+      extracted?.confidence ??
+      extracted?.confidence_score ??
+      null,
+
+    fields,
+
+    summary:
+      extracted?.summary ||
+      '',
+
+    rawText:
+      document.raw_text ||
+      '',
+
+    status: document.status,
+  };
 }
 
 export async function saveExtractedRecord(fields) {
-  try {
-    const { data } = await api.post('/documents/save', fields);
-    return data;
-  } catch (error) {
-    if (!error.response) return { saved: true, demo: true };
-    throw error;
-  }
+  throw new Error(
+    'Save endpoint is not implemented by the Document Reader backend yet.'
+  );
 }
+

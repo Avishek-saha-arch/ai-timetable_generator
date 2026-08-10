@@ -1,0 +1,8 @@
+pandas
+ortools
+openpyxl
+scikit-learn
+joblib
+fastapi
+uvicorn
+python-multipart
