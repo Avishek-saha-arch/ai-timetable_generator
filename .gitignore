@@ -3,9 +3,7 @@ frontend/node_modules/
 frontend/dist/
 
 # Env
-backend/.env
 
 # Python virtual environments
 venv/
 .venv/
-env/
