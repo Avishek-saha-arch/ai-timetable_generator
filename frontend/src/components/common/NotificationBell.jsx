@@ -12,11 +12,17 @@ const iconFor = (type) => {
 
 const NotificationBell = () => {
   const [open, setOpen] = useState(false);
-  const { notifications, loadNotifications, removeNotification } = useAppStore();
+  // Pull notifications state directly from Zustand store (Removed duplicate useState)
+  const { notifications = [], loadNotifications, removeNotification } = useAppStore();
 
   useEffect(() => {
-    loadNotifications();
+    if (typeof loadNotifications === 'function') {
+      loadNotifications();
+    }
   }, [loadNotifications]);
+
+  const list = Array.isArray(notifications) ? notifications : [];
+  const count = list.length;
 
   return (
     <div className="relative">
@@ -25,12 +31,13 @@ const NotificationBell = () => {
         className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500 bg-white border border-slate-200 shadow-sm transition-colors relative"
       >
         <Bell size={20} />
-        {notifications.length > 0 && (
+        {count > 0 && (
           <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FFA20A] text-white text-[10px] font-bold flex items-center justify-center">
-            {notifications.length}
+            {count}
           </span>
         )}
       </button>
+
       <AnimatePresence>
         {open && (
           <motion.div
@@ -42,20 +49,24 @@ const NotificationBell = () => {
           >
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-bold text-slate-900">Notifications</h3>
-              <Badge variant="primary">{notifications.length} New</Badge>
+              <Badge variant="primary">{count} New</Badge>
             </div>
+            
             <div className="max-h-96 overflow-y-auto custom-scrollbar">
-              {notifications.length === 0 ? (
+              {count === 0 ? (
                 <div className="p-6 text-center text-slate-500 text-sm font-medium">All caught up!</div>
               ) : (
-                notifications.map((n) => (
+                list.map((n) => (
                   <div key={n.id} className="flex gap-3 items-start p-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
                     <div className="mt-0.5">{iconFor(n.type)}</div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-slate-800">{n.text}</p>
                       <p className="text-xs text-slate-400 font-medium mt-1">{n.time}</p>
                     </div>
-                    <button onClick={() => removeNotification(n.id)} className="text-slate-300 hover:text-slate-500">
+                    <button 
+                      onClick={() => removeNotification && removeNotification(n.id)} 
+                      className="text-slate-300 hover:text-slate-500"
+                    >
                       <X size={14} />
                     </button>
                   </div>

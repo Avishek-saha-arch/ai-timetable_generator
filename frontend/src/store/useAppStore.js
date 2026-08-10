@@ -1,101 +1,146 @@
 import { create } from 'zustand';
-import { api } from '../services/api';
-import * as notificationsService from '../services/notifications.service';
-import { TOKEN_KEY, USER_KEY } from '../utils/constants';
+import * as authService from '../services/auth.service';
 
-const cachedUser = (() => {
-  try {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-})();
+// Safely parse initial user and token state from localStorage
+const cachedUser = authService.getCachedUser();
+const cachedToken = authService.getCachedToken();
+const hasSession = Boolean(cachedUser && cachedToken);
 
-const initialUser = cachedUser;
-
-const useAppStore = create((set) => ({
-  user: initialUser,
-  currentUser: initialUser,
-  isAuthenticated: Boolean(initialUser),
-  userRole: initialUser?.role || null,
+const useAppStore = create((set, get) => ({
+  user: cachedUser,
+  currentUser: cachedUser,
+  isAuthenticated: hasSession,
+  userRole: cachedUser?.role || null,
   authLoading: false,
   authError: null,
+  isInitializing: true, // Tracks whether the initial /me check on load has completed
 
+  /**
+   * Called on app mount (in App.jsx) to verify session with backend
+   */
+  initializeSession: async () => {
+    const token = authService.getCachedToken();
+
+    if (!token) {
+      set({
+        user: null,
+        currentUser: null,
+        isAuthenticated: false,
+        userRole: null,
+        isInitializing: false,
+      });
+      return;
+    }
+
+    try {
+      set({ authLoading: true });
+      const freshUser = await authService.fetchCurrentUser();
+
+      if (freshUser) {
+        set({
+          user: freshUser,
+          currentUser: freshUser,
+          isAuthenticated: true,
+          userRole: freshUser.role || null,
+          authLoading: false,
+          isInitializing: false,
+        });
+      } else {
+        // Token was invalid or expired
+        set({
+          user: null,
+          currentUser: null,
+          isAuthenticated: false,
+          userRole: null,
+          authLoading: false,
+          isInitializing: false,
+        });
+      }
+    } catch (error) {
+      console.error('[Session Init] Verification failed:', error);
+      // Fallback: If network error, rely on cached user state rather than logging out
+      const fallbackUser = authService.getCachedUser();
+      set({
+        user: fallbackUser,
+        currentUser: fallbackUser,
+        isAuthenticated: Boolean(fallbackUser),
+        userRole: fallbackUser?.role || null,
+        authLoading: false,
+        isInitializing: false,
+      });
+    }
+  },
+
+  /**
+   * Register Action
+   */
   register: async ({ name, email, password, role }) => {
-    set({
-      authLoading: true,
-      authError: null,
-    });
+    set({ authLoading: true, authError: null });
 
     try {
-      const data = await api.register({
-        name,
-        email,
-        password,
-        role,
-      });
+      const response = await authService.register({ name, email, password, role });
+      const user = response.user;
 
       set({
-        user: data.user,
-        currentUser: data.user,
+        user,
+        currentUser: user,
         isAuthenticated: true,
-        userRole: data.user?.role || null,
+        userRole: user?.role || null,
         authLoading: false,
       });
 
-      return data.user;
+      return user;
     } catch (error) {
-      set({
-        authLoading: false,
-        authError: error.message,
-      });
-
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
+      set({ authLoading: false, authError: errorMessage });
       throw error;
     }
   },
 
+  /**
+   * Login Action
+   */
   login: async ({ email, password, role }) => {
-    set({
-      authLoading: true,
-      authError: null,
-    });
+    set({ authLoading: true, authError: null });
 
     try {
-      const data = await api.login({
-        email,
-        password,
-        role,
-      });
+      const response = await authService.login({ email, password, role });
+      const user = response.user;
 
       set({
-        user: data.user,
-        currentUser: data.user,
+        user,
+        currentUser: user,
         isAuthenticated: true,
-        userRole: data.user?.role || null,
+        userRole: user?.role || null,
         authLoading: false,
       });
 
-      return data.user;
+      return user;
     } catch (error) {
-      set({
-        authLoading: false,
-        authError: error.message,
-      });
-
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      set({ authLoading: false, authError: errorMessage });
       throw error;
     }
   },
 
+  /**
+   * Logout Action
+   */
   logout: async () => {
-    await api.logout();
-
-    set({
-      user: null,
-      currentUser: null,
-      isAuthenticated: false,
-      userRole: null,
-    });
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.warn('Logout warning:', err);
+    } finally {
+      set({
+        user: null,
+        currentUser: null,
+        isAuthenticated: false,
+        userRole: null,
+        authLoading: false,
+        authError: null,
+      });
+    }
   },
 }));
 

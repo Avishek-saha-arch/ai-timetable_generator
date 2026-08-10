@@ -7,7 +7,9 @@ import Button from '../../components/ui/Button';
 import useAppStore from '../../store/useAppStore';
 
 const StudentDashboardHome = () => {
-  const { currentUser } = useAppStore();
+  const { currentUser, isInitializing } = useAppStore();
+
+  const displayName = currentUser?.name || 'Student';
 
   const stats = [
     { title: "Today's Classes", value: '4', sub: 'Next: Physics at 11:00 AM', icon: BookOpen, c: 'text-blue-600', bg: 'bg-blue-50' },
@@ -23,9 +25,20 @@ const StudentDashboardHome = () => {
     { time: '02:00 PM', subject: 'Computer Science', type: 'Lab', room: 'Lab 3' },
   ];
 
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-[#284A50] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader title={`Good Morning, ${currentUser.name}`} description="Here is your academic overview for today." />
+      <PageHeader 
+        title={`Good Morning, ${displayName}`} 
+        description="Here is your academic overview for today." 
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
