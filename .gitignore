@@ -1,9 +1,50 @@
-# Frontend
+# # Frontend
+# frontend/node_modules/
+# frontend/dist/
+
+# # Env
+
+# # Python virtual environments
+# venv/
+# .venv/     age chilo ata docker korar age 
+# Node
+node_modules/
 frontend/node_modules/
 frontend/dist/
 
-# Env
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
 
-# Python virtual environments
+# Virtual environments
 venv/
 .venv/
+env/
+
+# Environment files
+.env
+*.env
+
+# Python databases
+*.db
+*.sqlite
+*.sqlite3
+
+# AI generated files
+ai-services/document-reader/uploads/
+ai-services/document-reader/temp_images/
+
+# Generated timetable files
+ai-services/timetable-generator/generated_timetable.xlsx
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store #for macOS
+Thumbs.db #for Windows
+
+# Docker
+*.log
