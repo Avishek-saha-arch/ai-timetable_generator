@@ -90,7 +90,7 @@ while True:
             full_text_parts = []
 
             max_workers = min(
-                1,#can iccresse in laptop with higher spec it coule incress till 4 
+                2,#can iccresse in laptop with higher spec it coule incress till 4 
                 len(image_paths)
             )
 

@@ -1,0 +1,42 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: planify-backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  document-reader:
+    build:
+      context: ./ai-services/document-reader
+      dockerfile: Dockerfile
+    container_name: planify-document-reader
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./ai-services/document-reader/.env
+    volumes:
+      - ./ai-services/document-reader:/app
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: planify-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+      - document-reader
+    restart: unless-stopped
