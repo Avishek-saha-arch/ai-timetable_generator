@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { TOKEN_KEY, USER_KEY } from '../utils/constants';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000/api";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "https://planify-backend-o8py.onrender.com";
 
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
