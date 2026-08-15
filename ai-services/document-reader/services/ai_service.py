@@ -1,11 +1,17 @@
 import json
+import os
 import ollama
 
 
+OLLAMA_HOST = os.getenv(
+    "OLLAMA_HOST",
+    "http://host.docker.internal:11434"
+)
+
+client = ollama.Client(host=OLLAMA_HOST)
+
+
 def extract_document_data(raw_text: str):
-    """
-    Extract dynamic structured information from OCR text using Ollama.
-    """
 
     # Limit OCR text for faster AI processing
     raw_text = raw_text[:5000]
@@ -49,17 +55,17 @@ IMPORTANT RULES:
 8. Extract all important information that can reasonably be identified.
 9. Preserve important numbers, names, dates, amounts, titles and identifiers.
 10. Keep the summary concise.
-11. The "fields" object can contain any keys that are relevant to the document.
+11. The "fields" object can contain any keys relevant to the document.
 12. If the document has lists, arrays may be used.
 13. If the document contains tables, represent important table information using arrays of objects when appropriate.
+14. Preserve the meaning and wording of extracted values as much as possible.
+15. Never guess missing values.
 
-Return exactly this overall structure:
+Return exactly this structure:
 
 {{
     "document_type": "type of document",
-    "fields": {{
-        "field_name": "value"
-    }},
+    "fields": {{}},
     "summary": "short summary of the document"
 }}
 
@@ -73,19 +79,19 @@ OCR TEXT:
 
     try:
 
-        response = ollama.chat(
-        model="gemma3:4b",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
+        response = client.chat(
+            model="gemma3:4b",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            format="json",
+            options={
+                "temperature": 0
             }
-        ],
-        format="json",
-        options={
-            "temperature": 0
-        }
-)
+        )
 
         print("Response received!")
 
@@ -105,21 +111,24 @@ OCR TEXT:
 
         except json.JSONDecodeError:
 
-            # Sometimes the model puts extra text before/after JSON.
-            # Try to locate the JSON object.
+            # Try to locate JSON object
             start = content.find("{")
             end = content.rfind("}")
 
             if start == -1 or end == -1:
-                raise ValueError("No JSON object found in AI response.")
+                raise ValueError(
+                    "No JSON object found in AI response."
+                )
 
             json_text = content[start:end + 1]
 
             data = json.loads(json_text)
 
-        # Make sure the basic structure exists
+        # Make sure basic structure exists
         if not isinstance(data, dict):
-            raise ValueError("AI response is not a JSON object.")
+            raise ValueError(
+                "AI response is not a JSON object."
+            )
 
         if "document_type" not in data:
             data["document_type"] = "Unknown"
