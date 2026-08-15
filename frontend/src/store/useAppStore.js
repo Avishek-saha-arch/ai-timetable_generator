@@ -7,6 +7,7 @@ const cachedToken = authService.getCachedToken();
 const hasSession = Boolean(cachedUser && cachedToken);
 
 const useAppStore = create((set, get) => ({
+  // Authentication State
   user: cachedUser,
   currentUser: cachedUser,
   isAuthenticated: hasSession,
@@ -14,6 +15,10 @@ const useAppStore = create((set, get) => ({
   authLoading: false,
   authError: null,
   isInitializing: true, // Tracks whether the initial /me check on load has completed
+
+  // Sidebar Layout State & Actions
+  sidebarOpen: true,
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
   /**
    * Called on app mount (in App.jsx) to verify session with backend
