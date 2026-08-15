@@ -1,7 +1,6 @@
 // src/services/attendance.service.js
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  'https://planify-backend-o8py.onrender.com/api/attendance';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api/attendance';
+
 /**
  * Fetches the student roster for a specific class, section, and date.
  */
