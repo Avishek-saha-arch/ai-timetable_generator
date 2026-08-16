@@ -46,10 +46,9 @@ const DashboardLayout = ({ menuItems, activeMenu, onMenuSelect, brandLabel = 'Pl
           onClick={handleBurgerClick}
         />
       )}
-
-      {/* Side Navigation Bar Component */}
+{/* Side Navigation Bar Component */}
       <aside
-        className={`fixed md:sticky left-0 top-0 h-screen bg-[#0F172A] z-50 flex flex-col transition-all duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 bg-[#0F172A] z-50 flex flex-col transition-all duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0 md:w-20'
         }`}
       >
@@ -100,8 +99,9 @@ const DashboardLayout = ({ menuItems, activeMenu, onMenuSelect, brandLabel = 'Pl
       </aside>
 
       {/* Main App Content Viewport Area */}
-      <main className="flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 z-10 relative">
-        
+      <main className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 z-10 relative ${
+        sidebarOpen ? 'md:ml-72' : 'md:ml-20'
+      }`}>
         {/* Top Interactive Navigation Header Bar */}
         <header className="h-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800 sticky top-0 z-30 px-4 lg:px-10 flex items-center justify-between transition-colors">
           
