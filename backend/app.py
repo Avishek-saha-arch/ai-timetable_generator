@@ -40,12 +40,4 @@ def healthz():
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     app.run(debug=True, port=5000, host="0.0.0.0")
-=======
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False
-    )
->>>>>>> 73f0abd6b309c9778d36ddf22b1f0262e3b2b384
