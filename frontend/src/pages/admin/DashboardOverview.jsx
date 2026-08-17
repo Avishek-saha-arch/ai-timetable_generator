@@ -20,16 +20,60 @@ const statusPie = [
 const DashboardOverview = () => {
   const [studentCount, setStudentCount] = useState(null);
   const [teacherCount, setTeacherCount] = useState(null);
+  const [averageAttendance, setAverageAttendance] = useState(null);
 
-  useEffect(() => {
-    studentsService.getStudents().then((s) => setStudentCount(s.length));
-    teachersService.getTeachers().then((t) => setTeacherCount(t.length));
-  }, []);
+useEffect(() => {
+  const loadDashboardData = async () => {
+    try {
+      const [
+        studentCount,
+        teachers,
+        attendance
+      ] = await Promise.all([
+        studentsService.getStudentCount(),
+        teachersService.getTeachers(),
+        studentsService.getAverageAttendance()
+      ]);
+
+      console.log("Dashboard data:", {
+        studentCount,
+        teachers,
+        attendance
+      });
+
+      setStudentCount(studentCount);
+      setTeacherCount(teachers.length);
+      setAverageAttendance(attendance);
+
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+    }
+  };
+
+  loadDashboardData();
+}, []);
 
   const stats = [
-    { title: 'Total Students', value: studentCount ?? '—', sub: 'Across all grades', icon: GraduationCap, c: 'text-blue-600', bg: 'bg-blue-50' },
+    {
+      title: 'Total Students',
+      value: studentCount ?? '—',
+      sub: 'Across all grades',
+      icon: GraduationCap,
+      c: 'text-blue-600',
+      bg: 'bg-blue-50'
+    },
     { title: 'Total Faculty', value: teacherCount ?? '—', sub: 'Active this term', icon: Users, c: 'text-[#284A50]', bg: 'bg-[#284A50]/10' },
-    { title: 'Avg. Attendance', value: '92%', sub: '+2% from last month', icon: Activity, c: 'text-emerald-600', bg: 'bg-emerald-50' },
+    {
+      title: 'Avg. Attendance',
+      value:
+        averageAttendance !== null
+          ? `${averageAttendance}%`
+          : '—',
+      sub: 'Across all students',
+      icon: Activity,
+      c: 'text-emerald-600',
+      bg: 'bg-emerald-50'
+    },
     { title: 'Open Alerts', value: '3', sub: '1 needs urgent action', icon: AlertTriangle, c: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
@@ -95,7 +139,7 @@ const DashboardOverview = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50 border border-amber-100">
             <div>
-              <p className="font-bold text-slate-800 text-sm">Teacher Sarah absent today</p>
+              <p className="font-bold text-slate-800 text-sm"></p>
               <p className="text-xs text-slate-500 font-medium">Substitute required for Room 302</p>
             </div>
             <Badge variant="warning">Action Needed</Badge>

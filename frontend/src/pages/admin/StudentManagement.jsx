@@ -9,7 +9,7 @@ import Modal from '../../components/ui/Modal';
 import SearchBar from '../../components/common/SearchBar';
 import * as studentsService from '../../services/students.service';
 
-const emptyForm = { name: '', grade: '', section: '', gpa: '', attendance: '' };
+const emptyForm = { name: '', className: '', section: '', roll: '', attendance: '' };
 
 const StudentManagement = () => {
   const [students, setStudents] = useState([]);
@@ -19,20 +19,38 @@ const StudentManagement = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
-  const load = () => {
-    setLoading(true);
-    studentsService.getStudents().then((data) => {
-      setStudents(data);
-      setLoading(false);
-    });
+  const load = async() => {
+      try {
+        setLoading(true);
+
+        const data = await studentsService.getStudents();
+
+        console.log("Students received:", data);
+
+        setStudents(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+        setStudents([]);
+      } finally {
+        setLoading(false);
+      }
   };
 
-  useEffect(load, []);
+  useEffect(() => {load();}, []);
 
-  const filtered = useMemo(
-    () => students.filter((s) => s.name.toLowerCase().includes(query.toLowerCase()) || s.id.toLowerCase().includes(query.toLowerCase())),
-    [students, query]
-  );
+  const filtered = useMemo(() => {
+  const search = query.toLowerCase();
+
+  return (Array.isArray(students) ? students : []).filter((s) => {
+    const name = String(s.name || '').toLowerCase();
+    const id = String(s.id || '').toLowerCase();
+
+    return (
+      name.includes(search) ||
+      id.includes(search)
+    );
+  });
+}, [students, query]);
 
   const openCreate = () => {
     setEditing(null);
@@ -42,7 +60,7 @@ const StudentManagement = () => {
 
   const openEdit = (student) => {
     setEditing(student);
-    setForm({ name: student.name, grade: student.grade, section: student.section, gpa: student.gpa, attendance: student.attendance });
+    setForm({ name: student.name, className: student.className, section: student.section, attendance: student.attendance });
     setModalOpen(true);
   };
 
@@ -63,11 +81,12 @@ const StudentManagement = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      {/* RAJIB i am removing this button because we dont have any use of this button cause we will add students from database directly */}
+      {/* <PageHeader
         title="Student Management"
         description="View, add, and manage student records across your institution."
         action={<Button onClick={openCreate}><Plus size={18} /> Add Student</Button>}
-      />
+      /> */}
 
       <div className="flex flex-col sm:flex-row gap-4">
         <SearchBar value={query} onChange={setQuery} placeholder="Search by name or ID..." className="flex-1" />
@@ -81,12 +100,10 @@ const StudentManagement = () => {
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="px-6 py-4">Student</th>
-                <th className="px-6 py-4">Grade</th>
+                <th className="px-6 py-4">Class</th>
                 <th className="px-6 py-4">Section</th>
+                <th className="px-6 py-4">Roll</th>
                 <th className="px-6 py-4">Attendance</th>
-                <th className="px-6 py-4">GPA</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -101,17 +118,11 @@ const StudentManagement = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-semibold text-slate-600">{s.grade}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-600">{s.className}</td>
                   <td className="px-6 py-4 font-semibold text-slate-600">{s.section}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-600">{s.roll}</td>
                   <td className="px-6 py-4 font-semibold text-slate-600">{s.attendance}%</td>
-                  <td className="px-6 py-4 font-semibold text-slate-600">{s.gpa}</td>
-                  <td className="px-6 py-4"><Badge variant={s.status === 'Warning' ? 'warning' : 'success'}>{s.status}</Badge></td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(s)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(s.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={16} /></button>
-                    </div>
-                  </td>
+                  
                 </tr>
               ))}
               {filtered.length === 0 && (
@@ -149,8 +160,8 @@ const StudentManagement = () => {
             <input
               className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#284A50]/50"
               placeholder="Grade (e.g. 10th)"
-              value={form.grade}
-              onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
+              value={form.className}
+              onChange={(e) => setForm((f) => ({ ...f, className: e.target.value }))}
             />
             <input
               className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#284A50]/50"
@@ -168,9 +179,11 @@ const StudentManagement = () => {
             />
             <input
               className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#284A50]/50"
-              placeholder="GPA"
-              value={form.gpa}
-              onChange={(e) => setForm((f) => ({ ...f, gpa: e.target.value }))}
+              placeholder="Roll Number"
+              value={form.roll}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, roll: e.target.value }))
+              }
             />
           </div>
         </div>
